@@ -108,31 +108,72 @@ contract Exchange {
 	uint256 public futuresCount;
 	// mapping for holding our futures on the exchangenvm 
 	mapping(uint256 => _futuresContract) public futures;
-	// mapping to track cancelled future orders
-	mapping(uint256 => bool) public futureOrderCancelled;
+	// mapping that tracks if a futures contract has been cancelled by the user who created it before it was filled
+	mapping(uint256 => bool) public futuresContractCancelled;
+	// mapping that tracks if the futures contract has been struck
+	mapping(uint256 => bool) public futuresContractStruck;
 
 	// event emits when a deposit is made into the exchange tokens mapping
 	event Deposit(address token, address user, uint256 amount, uint256 balance);
 	// event emits when a withdraw is made from the exchange tokens mapping
 	event Withdraw(address token, address user, uint256 amount, uint256 balance);
-	// event emits when a futures contract is creates
+	// event emits when a futures contract is created
 	event CreateFuturesContract(
 		// unique identifier for the future order
 		uint256 id,
 		// address that creates the order
 		address futuresContractCreator,
 		// address of UNDERLYING 
-		address tokenGet,
+		address tokenUnderlying,
 		// amount of UNDERLYING
-		uint256 amountGet,
+		uint256 amountUnderlying,
 		// address of the PRICE payment token (CHZ)
-		address tokenGive,
+		address tokenPrice,
 		// amount of the PRICE method
-		uint256 amountGive,
+		uint256 amountPrice,
 		// future contract expiration time, should be quarterly
 		uint256 timeExpiration,
 		// timestamp for creation of future contract
 		uint256 timeCreation
+	);
+	// event emits when a futures contract is cancelled
+	event CancelFuturesContract(
+		// unique identifier for the future order
+		uint256 id,
+		// address that creates the order
+		address futuresContractCreator,
+		// address of UNDERLYING 
+		address tokenUnderlying,
+		// amount of UNDERLYING
+		uint256 amountUnderlying,
+		// address of the PRICE payment token (CHZ)
+		address tokenPrice,
+		// amount of the PRICE method
+		uint256 amountPrice,
+		// future contract expiration time, should be quarterly
+		uint256 timeExpiration,
+		// timestamp for creation of future contract
+		uint256 timeCancel
+	);
+	
+	// event emits when a futures contract is struck
+	event StrikeFuturesContract(
+		// unique identifier for the future order
+		uint256 id,
+		// address that creates the order
+		address futuresContractCreator,
+		// address of UNDERLYING 
+		address tokenUnderlying,
+		// amount of UNDERLYING
+		uint256 amountUnderlying,
+		// address of the PRICE payment token (CHZ)
+		address tokenPrice,
+		// amount of the PRICE method
+		uint256 amountPrice,
+		// future contract expiration time, should be quarterly
+		uint256 timeExpiration,
+		// timestamp for creation of future contract
+		uint256 timeStrike
 	);
 
 	// futures orders data type structure
@@ -142,13 +183,13 @@ contract Exchange {
 		// address that creates the order
 		address futuresContractCreator;
 		// address of UNDERLYING 
-		address tokenGet;
+		address tokenUnderlying;
 		// amount of UNDERLYING
-		uint256 amountGet;
+		uint256 amountUnderlying;
 		// address of the PRICE payment token (CHZ)
-		address tokenGive;
+		address tokenPrice;
 		// amount of the PRICE method
-		uint256 amountGive;
+		uint256 amountPrice;
 		// future contract expiration time, should be quarterly
 		uint256 timeExpiration;
 		// timestamp for creation of future contract
@@ -223,13 +264,13 @@ contract Exchange {
 	// function that puts the futures contract onto the exchange
 	function createFuturesContract(
 		// underlying address parameter
-		address _tokenGet, 
+		address _tokenUnderlying, 
 		// underlying amount parameter
-		uint256 _amountGet, 
+		uint256 _amountUnderlying, 
 		// token price payment method address
-		address _tokenGive, 
+		address _tokenPrice, 
 		// token price payment amount
-		uint256 _amountGive, 
+		uint256 _amountPrice, 
 		// quarter that the futures contract may no longer be filled
 		uint256 _expirationQuarter
 		) public {
@@ -242,13 +283,13 @@ contract Exchange {
 			// input for address that creates the order
 			msg.sender,
 			// input for address of underlying
-			_tokenGet,
+			_tokenUnderlying,
 			// input for amount of underlying
-			_amountGet,
+			_amountUnderlying,
 			// input for address of price token
-			_tokenGive,
+			_tokenPrice,
 			// input for amount of price token
-			_amountGive,
+			_amountPrice,
 			// input for expiration time of the futures contract
 			_expirationQuarter,
 			// input for creation time of the futures contract
@@ -261,13 +302,13 @@ contract Exchange {
 			// input for address that creates the order
 			msg.sender,
 			// input for address of underlying
-			_tokenGet,
+			_tokenUnderlying,
 			// input for amount of underlying
-			_amountGet,
+			_amountUnderlying,
 			// input for address of price token
-			_tokenGive,
+			_tokenPrice,
 			// input for amount of price token
-			_amountGive,
+			_amountPrice,
 			// input for expiration time of the futures contract
 			_expirationQuarter,
 			// input for creation time of the futures contract
@@ -277,6 +318,114 @@ contract Exchange {
 
 	// function that allows a user to cancel a futures order that has not been filled
 	function cancelFuturesContract(uint256 _id) public {
-		_Order storage _order = orders[_id]
+		// fetching futures struct out of storage and assigning to new object called futures contract fetch
+		_futuresContract storage _futuresContractFetch = futures[_id];
+		// require that the user trying to cancel the order is the user who created the order
+		require(_futuresContractFetch.futuresContractCreator == msg.sender);
+		// require that the order exists by checking that the input parameter id equals the id of the futures contract that was fetched
+		require(_futuresContractFetch.id == _id);
+		// set the cancellations tracking to true for the futures contract
+		futuresContractCancelled[_id] = true;
+		// emit cancel event 
+		emit CancelFuturesContract(
+			// input for id param
+			_futuresContractFetch.id,
+			// input for address that creates the order
+			_futuresContractFetch.futuresContractCreator,
+			// input for address of underlying
+			_futuresContractFetch.tokenUnderlying,
+			// input for amount of underlying
+			_futuresContractFetch.amountUnderlying,
+			// input for address of price token
+			_futuresContractFetch.tokenPrice,
+			// input for amount of price token
+			_futuresContractFetch.amountPrice,
+			// input for expiration time of the futures contract
+			_futuresContractFetch.timeExpiration,
+			// input for creation time of the futures contract
+			now
+		);
 	}
+
+	// function that allows a user to strike a futures contract
+	function strikeFuturesContract(uint256 _id) public {
+		// require that the id number is a valid id number
+		require(_id > 0 && _id <= futuresCount, 'Error, invalid id.');
+		// require that the futures contract has not already been struck
+		require(!futuresContractStruck[_id], 'Error, futures contract has already been struck.');
+		// require that the futures contract has not already been cancelled
+		require(!futuresContractCancelled[_id], 'Error, futures contract already cancelled.');
+		// fetch the futures contract we are filling from storange
+		_futuresContract storage _futuresContractFetch = futures[_id];
+		// require that futures contracts that have expired may not be struck
+		require(now <= _futuresContractFetch.timeExpiration);
+		// execute the internal strike function
+		_strike(
+			// input for id param
+			_futuresContractFetch.id,
+			// input for address that creates the order
+			_futuresContractFetch.futuresContractCreator,
+			// input for address of underlying
+			_futuresContractFetch.tokenUnderlying,
+			// input for amount of underlying
+			_futuresContractFetch.amountUnderlying,
+			// input for address of price token
+			_futuresContractFetch.tokenPrice,
+			// input for amount of price token
+			_futuresContractFetch.amountPrice,
+			// input for expiration time of the futures contract
+			_futuresContractFetch.timeExpiration
+			);
+
+	}
+
+	// internal function that executes the strike
+	function _strike(
+		// id of futures contract
+		uint256 _id,
+		// address of creator of futures contract
+		address _futuresContractCreator,
+		// address of underlying token
+		address _tokenUnderlying,
+		// amount of underlying
+		uint256 _amountUnderlying,
+		// address of price payment method token
+		address _tokenPrice,
+		// amount of price payment method
+		uint256 _amountPrice,
+		// expiration time
+		uint256 _timeExpiration
+		// function is internal
+		) internal {
+		// adding token underlying to futures contract creator tokens mapping
+		tokens[_tokenUnderlying][_futuresContractCreator] = tokens[_tokenUnderlying][_futuresContractCreator].add(_amountUnderlying);
+		// subtracting token underlying from the striker's account
+		tokens[_tokenUnderlying][msg.sender] = tokens[_tokenUnderlying][msg.sender].sub(_amountUnderlying);
+		// subtracting price token from futures contract creator
+		tokens[_tokenPrice][_futuresContractCreator] = tokens[_tokenPrice][_futuresContractCreator].sub(_amountPrice);
+		// adding price token to msg.sender's tokens mapping
+		tokens[_tokenPrice][msg.sender] = tokens[_tokenPrice][msg.sender].add(_amountPrice);
+		// emiting a strike event
+		emit StrikeFuturesContract(
+			// input for id param
+			_id,
+			// input for address that creates the order
+			_futuresContractCreator,
+			// input for address of underlying
+			_tokenUnderlying,
+			// input for amount of underlying
+			_amountUnderlying,
+			// input for address of price token
+			_tokenPrice,
+			// input for amount of price token
+			_amountPrice,
+			// input for expiration time of the futures contract
+			_timeExpiration,
+			// time that the strike occured
+			now
+		);
+
+
+	}
+
 }

@@ -322,13 +322,13 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 			// testing that contract creator address is correct
 			contract.futuresContractCreator.should.equal(user1)
 			// testing that token get (underlying) address is correct
-			contract.tokenGet.should.equal(token.address)
+			contract.tokenUnderlying.should.equal(token.address)
 			// testing that token get (underlying) amount is correct
-			contract.amountGet.toString().should.equal(tokens(3).toString())
+			contract.amountUnderlying.toString().should.equal(tokens(3).toString())
 			// testing that token give (price) address is correct
-			contract.tokenGive.should.equal(CHZ_ADDRESS)
+			contract.tokenPrice.should.equal(CHZ_ADDRESS)
 			// testing that token give (price) amount is correct
-			contract.amountGive.toString().should.equal(chiliz(1).toString())
+			contract.amountPrice.toString().should.equal(chiliz(1).toString())
 			// testing that expiration epoch time is set correctly
 			contract.timeExpiration.toString().should.equal('1663286401')
 			// testing that the timestamp for the contract creation is correct
@@ -348,15 +348,33 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 			// futures contract creator should be user1
 			event.futuresContractCreator.should.equal(user1)
 			// underlying token get should be the test ERC20 token address
-			event.tokenGet.should.equal(token.address)
+			event.tokenUnderlying.should.equal(token.address)
 			// underlying token amount should be three test ERC20 tokens
-			event.amountGet.toString().should.equal(tokens(3).toString())
+			event.amountUnderlying.toString().should.equal(tokens(3).toString())
 			// price payment method token address should be chiliz
-			event.tokenGive.should.equal(CHZ_ADDRESS)
+			event.tokenPrice.should.equal(CHZ_ADDRESS)
+			// price amount used to pay for the uncerlying
+			event.amountPrice.toString().should.equal(chiliz(1).toString())
 			// testing that expiration epoch time is set correctly
 			event.timeExpiration.toString().should.equal('1663286401')
 			// testing that the timestamp for the contract creation is correct
 			event.timeCreation.length.should.be.at.least(1)
 		})
 	})
+
+
+
+	// // tests the futures contract cancellation function
+	// describe('testing the cancel futures contract function', () => {
+	// 	// creating result variable for testing
+	// 	let result
+
+	// 	// describing success cases
+	// 	describe('success', async () => {
+	// 		// before each success case do this
+	// 		beforeEach(async () => {
+	// 			await
+	// 		})
+	// 	})
+	// })
 })
